@@ -1,6 +1,9 @@
 ﻿using BattleBitAPI;
 using BattleBitAPI.Common;
 using BattleBitAPI.Server;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
 class Program
 {
@@ -45,11 +48,10 @@ class CustomServer : GameServer<MyPlayer>
         // Apply attributes to the juggernaut player
         SetJuggernautAttributes(JuggernautPlayer);
 
-
         // Inform players about the juggernaut and start of the round
         foreach (var player in AllPlayers)
         {
-            if (player.Team.Equals(JuggernautPlayer))
+            if (player.Team.Equals(JuggernautPlayer.Team))
             {
                 player.Message($"You are the Juggernaut!");
             }
@@ -71,11 +73,10 @@ class CustomServer : GameServer<MyPlayer>
         }
     }
 
-
     // Method to set attributes for the juggernaut player
     public void SetJuggernautAttributes(MyPlayer player)
     {
-        // have team A be juggernaut team
+        // Have team A be the Juggernaut team
         player.Team = Team.TeamA;
         player.SetHP(player.Health);
         player.SetFallDamageMultiplier(0.1f);
@@ -83,22 +84,21 @@ class CustomServer : GameServer<MyPlayer>
         player.SetRunningSpeedMultiplier(player.MoveSpeed);
     }
 
-
-    public async Task OnAPlayerKilledAnotherPlayer(MyPlayer killer, MyPlayer victim,
-        OnPlayerKillArguments<MyPlayer> args)
+    public async Task OnAPlayerKilledAnotherPlayer(MyPlayer killer, MyPlayer victim, OnPlayerKillArguments<MyPlayer> args)
     {
-        if (killer.Team.Equals(JuggernautPlayer))
+        if (killer.Team.Equals(JuggernautPlayer.Team))
         {
-            if (victim.Team.Equals(JuggernautPlayer))
+            if (victim.Team.Equals(JuggernautPlayer.Team))
             {
-                // assign to random player
+                // Assign to a random player
                 var playersList = AllPlayers.ToList();
                 var random = new Random();
                 int randomIndex = random.Next(playersList.Count);
                 JuggernautPlayer = playersList[randomIndex];
                 SetJuggernautAttributes(JuggernautPlayer);
                 BroadcastMessage($"{killer.Name} killed {victim.Name}! {JuggernautPlayer.Name} is the new Juggernaut!");
-                //move juggernaut to team 1
+
+                // Move the juggernaut to team B
                 victim.Team = Team.TeamB;
             }
             else
@@ -115,15 +115,34 @@ class CustomServer : GameServer<MyPlayer>
                 BroadcastMessage($"{killer.Name} is on a killing spree!");
             }
         }
-        // check to make sure the juggernaut didn't kill themselves and set to new juggernaut
-        else if (!killer.Team.Equals(JuggernautPlayer) && victim.Team.Equals(JuggernautPlayer))
+        else if (!killer.Team.Equals(JuggernautPlayer.Team) && victim.Team.Equals(JuggernautPlayer.Team))
         {
+            // Set the killed player back to team B
+            victim.Team = Team.TeamB;
             JuggernautPlayer = killer;
             SetJuggernautAttributes(JuggernautPlayer);
 
-
             // Announce juggernaut transfer
             BroadcastMessage($"{killer.Name} has become the new Juggernaut!");
+        }
+    }
+
+    // Method called when a player disconnects
+    public async Task OnPlayerDisconnected(MyPlayer player)
+    {
+        if (JuggernautPlayer == player)
+        {
+            // Assign the Juggernaut status to another player
+            var playersList = AllPlayers.ToList();
+            playersList.Remove(player); // Remove the disconnected player
+            if (playersList.Count > 0)
+            {
+                var random = new Random();
+                int randomIndex = random.Next(playersList.Count);
+                JuggernautPlayer = playersList[randomIndex];
+                SetJuggernautAttributes(JuggernautPlayer);
+                BroadcastMessage($"{player.Name} has disconnected. {JuggernautPlayer.Name} is the new Juggernaut!");
+            }
         }
     }
 }
