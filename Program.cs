@@ -75,6 +75,8 @@ class CustomServer : GameServer<MyPlayer>
     // Method to set attributes for the juggernaut player
     public void SetJuggernautAttributes(MyPlayer player)
     {
+        // have team A be juggernaut team
+        player.Team = Team.TeamA;
         player.SetHP(player.Health);
         player.SetFallDamageMultiplier(0.1f);
         player.SetPrimaryWeapon(new WeaponItem() { Tool = Weapons.P90, MainSight = Attachments.FYouSight }, 20, false);
@@ -96,6 +98,8 @@ class CustomServer : GameServer<MyPlayer>
                 JuggernautPlayer = playersList[randomIndex];
                 SetJuggernautAttributes(JuggernautPlayer);
                 BroadcastMessage($"{killer.Name} killed {victim.Name}! {JuggernautPlayer.Name} is the new Juggernaut!");
+                //move juggernaut to team 1
+                victim.Team = Team.TeamB;
             }
             else
             {
